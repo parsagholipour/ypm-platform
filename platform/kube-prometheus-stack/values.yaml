@@ -3,19 +3,19 @@ crds:
 
 # k3s runs the controller manager, scheduler and proxy inside one process; their
 # metrics already come through the API server, so scraping them separately only
-# adds targets that look "down". etcd has its own endpoint (etcd-expose-metrics).
+# adds targets that look "down". etcd has its own endpoint (etcd-expose-metrics),
+# scraped statically below: the chart's Service + Endpoints route doesn't work
+# under Argo CD, which never manages Endpoints objects. enabled keeps the etcd
+# alert rules.
 kubeControllerManager: {enabled: false}
 kubeScheduler: {enabled: false}
 kubeProxy: {enabled: false}
 kubeEtcd:
   enabled: true
-  endpoints: [10.40.10.20]
   service:
-    enabled: true
-    port: 2381
-    targetPort: 2381
+    enabled: false
   serviceMonitor:
-    scheme: http
+    enabled: false
 
 prometheusOperator:
   resources:
@@ -31,6 +31,10 @@ prometheus:
     podMonitorSelectorNilUsesHelmValues: false
     probeSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
+    additionalScrapeConfigs:
+      - job_name: kube-etcd
+        static_configs:
+          - targets: [10.40.10.20:2381]
     resources:
       requests: {cpu: 100m, memory: 1Gi}
       limits: {memory: 2Gi}
