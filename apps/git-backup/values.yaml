@@ -5,7 +5,6 @@ components:
   # gickup: mirrors the GitHub repos every night at 22:00 UTC. The only
   # component holding the GitHub token.
   git-backup:
-    replicas: 0     # until the data copy (9.2)
     command: ["sh", "-c", "umask 077 && envsubst '$GITHUB_TOKEN $GITHUB_USER' </gickup/conf.template.yml >/tmp/conf.yml && exec /gickup/gickup /tmp/conf.yml"]
     network: {internet: true}
     secretEnv:
@@ -15,9 +14,7 @@ components:
     resources: {cpu: 50m, memory: 64Mi, memoryLimit: 512Mi}
 
   # The dashboard (login + TOTP, users in /data/web/users.json), same volume.
-  # Without users.json it creates admin/admin: it stays at 0 until 9.2 copies the file.
   git-backup-web:
-    replicas: 0     # until the data copy (9.2)
     ports: [{name: http, port: 3000}]
     network: {edge: true}
     env:
