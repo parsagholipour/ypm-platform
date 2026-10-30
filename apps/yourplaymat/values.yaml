@@ -29,7 +29,8 @@ components:
     probe: {http: {path: /_health, port: 1337}, startupSeconds: 180}
     resources: {cpu: 150m, memory: 256Mi, memoryLimit: 1Gi}
 
-  # Shopify sync and currency rates. 0 until the yourplaymat cutover (9.4).
+  # Shopify sync and currency rates. 0 while Railway's Yourplaymat service is live:
+  # it runs these crons until the storefront moves to api.yourplaymat.com.
   yourplaymat-worker:
     replicas: 0
     strategy: Recreate
