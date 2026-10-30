@@ -1,0 +1,77 @@
+{{- range $name, $j := .Values.cronJobs }}
+{{- if not $j.resources }}{{ fail (printf "cronJobs.%s.resources is required" $name) }}{{ end }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "service.labels" (dict "name" $name "root" $) | nindent 4 }}
+spec:
+  schedule: {{ $j.schedule | quote }}
+  timeZone: Etc/UTC
+  suspend: {{ $j.suspend | default false }}
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 120
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: {{ $j.timeoutSeconds | default 240 }}
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            {{- include "service.labels" (dict "name" $name "root" $) | nindent 12 }}
+            {{- range $k, $v := ($j.labels | default dict) }}
+            {{ $k }}: {{ $v | quote }}
+            {{- end }}
+            {{- range $flag, $on := ($j.network | default dict) }}
+            {{- if $on }}
+            ypm.io/{{ $flag }}: "true"
+            {{- end }}
+            {{- end }}
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: {{ $name }}
+              image: {{ include "service.image" (dict "root" $ "component" $j) }}
+              command: {{ toJson $j.command }}
+              env:
+                {{- range $k, $v := ($j.env | default dict) }}
+                - name: {{ $k }}
+                  value: {{ $v | toString | quote }}
+                {{- end }}
+                {{- range $k, $ref := ($j.secretKeys | default dict) }}
+                - name: {{ $k }}
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $ref.secret }}
+                      key: {{ $ref.key }}
+                {{- end }}
+              resources:
+                requests:
+                  cpu: {{ $j.resources.cpu | default "50m" }}
+                  memory: {{ $j.resources.memory }}
+                limits:
+                  memory: {{ $j.resources.memoryLimit | default $j.resources.memory }}
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              volumeMounts:
+                - {name: tmp, mountPath: /tmp}
+          volumes:
+            - name: tmp
+              emptyDir: {}
+{{- end }}

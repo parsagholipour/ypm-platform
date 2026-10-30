@@ -1,0 +1,33 @@
+image:
+  repository: 780564622080.dkr.ecr.us-east-1.amazonaws.com/ypm/discord-service
+
+components:
+  discord:
+    # Its Discord gateway client only sends (no event handlers), so a second
+    # copy is harmless; Recreate still keeps it to one at a time.
+    strategy: Recreate
+    ports: [{name: http, port: 1337}]
+    network: {edge: true, internet: true, rds: true}
+    readOnlyRootFilesystem: false
+    env:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "1337"
+      DATABASE_CLIENT: postgres
+      DATABASE_HOST: ${RDS_HOST}
+      DATABASE_PORT: ${RDS_PORT}
+      DATABASE_NAME: ypm_discord
+      DATABASE_USERNAME: ypm_discord
+      DATABASE_SSL: "true"
+      DATABASE_SSL_REJECT_UNAUTHORIZED: "true"
+      NODE_EXTRA_CA_CERTS: /etc/ssl/rds/rds-ca.pem
+    secretEnv:
+      paths: [env/discord]
+      keys:
+        DATABASE_PASSWORD: generated/db_discord_password
+        RABBITMQ_PASSWORD: generated/rabbitmq_password
+      templates:
+        RABBITMQ_URL: "amqp://ypm:{{ .RABBITMQ_PASSWORD }}@rabbitmq:5672"
+    rdsCa: true
+    probe: {http: {path: /_health, port: 1337}, startupSeconds: 180}
+    resources: {cpu: 50m, memory: 320Mi, memoryLimit: 1Gi}

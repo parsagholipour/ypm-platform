@@ -1,0 +1,23 @@
+{{- range $name, $c := .Values.components }}
+{{- with $c.persistence }}
+{{- if .size }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $name }}-data
+  labels:
+    {{- include "service.labels" (dict "name" $name "root" $) | nindent 4 }}
+  annotations:
+    # Data outlives the app: Argo CD never prunes or deletes it.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: gp3
+  resources:
+    requests:
+      storage: {{ .size }}
+{{- end }}
+{{- end }}
+{{- end }}

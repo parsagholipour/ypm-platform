@@ -1,0 +1,68 @@
+image:
+  repository: 780564622080.dkr.ecr.us-east-1.amazonaws.com/ypm/arcane-crm
+
+components:
+  crm:
+    ports: [{name: http, port: 3007}]
+    network: {edge: true, internet: true, rds: true}
+    env:
+      NODE_ENV: production
+      AUTH_URL: https://crm.arcane-fortress.com
+      PUBLIC_APP_URL: https://crm.arcane-fortress.com
+      # The CRM streams files through its own server, so MinIO stays internal.
+      MINIO_ENDPOINT: http://minio:9000
+    secretEnv:
+      paths: [env/crm]
+      keys:
+        DATABASE_PASSWORD: generated/db_crm_password
+      templates:
+        DATABASE_URL: "postgresql://ypm_crm:{{ .DATABASE_PASSWORD }}@${RDS_HOST}:${RDS_PORT}/ypm_crm?sslmode=require&sslaccept=strict&sslcert=/etc/ssl/rds/rds-ca.pem"
+    writable: [/tmp, /app/.next/cache]
+    rdsCa: true
+    # 200 once the Keycloak provider is configured; no database access.
+    probe: {http: {path: /api/auth/providers, port: 3007}, startupSeconds: 120}
+    resources: {cpu: 150m, memory: 384Mi, memoryLimit: 1Gi}
+
+# The CRM's scheduled dispatch endpoints (POST with a bearer secret; 503 when
+# the secret is unset). Keep only those whose *_CRON_SECRET exists (2.3).
+# Suspended until the arcane cutover (9.6), so they never run in two places.
+cronJobs:
+  crm-lead-webhooks:
+    schedule: "*/5 * * * *"          # docs/CRM-API.md: "Call every five minutes"
+    suspend: true
+    command: &dispatch
+      - node
+      - -e
+      - "fetch(process.env.DISPATCH_URL,{method:'POST',headers:{authorization:'Bearer '+process.env.TOKEN}}).then(async r=>{console.log(r.status,(await r.text()).slice(0,500));process.exit(r.ok?0:1)}).catch(e=>{console.error(e);process.exit(1)})"
+    env: {DISPATCH_URL: "http://crm:3007/api/webhooks/leads/dispatch"}
+    secretKeys:
+      TOKEN: {secret: crm-env, key: LEAD_WEBHOOK_CRON_SECRET}
+    labels: {ypm.io/cron: crm}
+    resources: {cpu: 50m, memory: 128Mi, memoryLimit: 192Mi}
+  crm-calendar-reminders:
+    schedule: "*/5 * * * *"          # confirm the cadence with the CRM's owner
+    suspend: true
+    command: *dispatch
+    env: {DISPATCH_URL: "http://crm:3007/api/calendar/reminders/dispatch"}
+    secretKeys:
+      TOKEN: {secret: crm-env, key: CALENDAR_REMINDER_CRON_SECRET}
+    labels: {ypm.io/cron: crm}
+    resources: {cpu: 50m, memory: 128Mi, memoryLimit: 192Mi}
+  crm-shipment-tracking:
+    schedule: "*/30 * * * *"         # confirm: carrier APIs rate-limit
+    suspend: true
+    command: *dispatch
+    env: {DISPATCH_URL: "http://crm:3007/api/shipments/tracking/dispatch"}
+    secretKeys:
+      TOKEN: {secret: crm-env, key: SHIPMENT_TRACKING_CRON_SECRET}
+    labels: {ypm.io/cron: crm}
+    resources: {cpu: 50m, memory: 128Mi, memoryLimit: 192Mi}
+  crm-po-app-sync:
+    schedule: "*/15 * * * *"         # confirm the cadence with the CRM's owner
+    suspend: true
+    command: *dispatch
+    env: {DISPATCH_URL: "http://crm:3007/api/integrations/po-app/dispatch"}
+    secretKeys:
+      TOKEN: {secret: crm-env, key: PO_APP_SYNC_CRON_SECRET}
+    labels: {ypm.io/cron: crm}
+    resources: {cpu: 50m, memory: 128Mi, memoryLimit: 192Mi}

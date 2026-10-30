@@ -1,0 +1,28 @@
+controller:
+  region: us-east-1
+  replicaCount: 1
+  # AWS Backup selects volumes by this tag (aws_backup_selection.k3s).
+  extraVolumeTags:
+    Backup: ypm-prod-k3s
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::780564622080:role/ypm-prod-k3s-ebs-csi
+  resources:
+    requests: {cpu: 10m, memory: 64Mi}
+    limits: {memory: 256Mi}
+node:
+  metadataSources: kubernetes
+  tolerateAllTaints: true
+storageClasses:
+  - name: gp3
+    annotations:
+      storageclass.kubernetes.io/is-default-class: "true"
+    volumeBindingMode: WaitForFirstConsumer
+    allowVolumeExpansion: true
+    # A deleted PVC leaves its volume behind; delete volumes by hand, on purpose.
+    reclaimPolicy: Retain
+    parameters:
+      type: gp3
+      encrypted: "true"
+      kmsKeyId: arn:aws:kms:us-east-1:780564622080:key/44030ea5-71b2-4506-b948-fdde002ba96d
+      csi.storage.k8s.io/fstype: ext4

@@ -1,0 +1,48 @@
+{{- $repos := list .Values.repoURL }}
+{{- range .Values.platform }}{{ with .repoURL }}{{ $repos = append $repos . }}{{ end }}{{ end }}
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-100"
+spec:
+  description: Cluster add-ons, managed from ypm-platform
+  sourceRepos: {{ $repos | uniq | toJson }}
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: apps
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-100"
+spec:
+  description: YPM workloads; each app's repository releases its own image
+  sourceRepos:
+    - {{ .Values.repoURL }}
+    {{- range .Values.apps }}{{ with .repo }}
+    - https://github.com/parsagholipour/{{ . }}.git
+    {{- end }}{{ end }}
+  destinations:
+    {{- range $ns := (list "ypm" "yourplaymat" "arcane" "git-backup") }}
+    - server: https://kubernetes.default.svc
+      namespace: {{ $ns }}
+    {{- end }}
+  # Apps can create only what charts/service renders: no cluster-scoped
+  # objects, no RBAC, no Secrets (External Secrets writes those).
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - {group: apps, kind: Deployment}
+    - {group: "", kind: Service}
+    - {group: "", kind: ConfigMap}
+    - {group: "", kind: PersistentVolumeClaim}
+    - {group: batch, kind: CronJob}
+    - {group: external-secrets.io, kind: ExternalSecret}

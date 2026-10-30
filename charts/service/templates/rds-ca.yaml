@@ -1,0 +1,11 @@
+{{- $needed := false }}
+{{- range .Values.components }}{{ if .rdsCa }}{{ $needed = true }}{{ end }}{{ end }}
+{{- if $needed }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-rds-ca
+data:
+  rds-ca.pem: |
+    {{- .Files.Get "files/rds-ca.pem" | nindent 4 }}
+{{- end }}

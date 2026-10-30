@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: heartbeat
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::780564622080:role/ypm-prod-k3s-heartbeat
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: heartbeat
+data:
+  heartbeat.sh: |
+    #!/bin/bash
+    # Publishes YPM/K3s Heartbeat (1 = Prometheus and Alertmanager are ready)
+    # and EtcdSnapshotAgeHours to CloudWatch; the alarms are in infra/k3s.tf.
+    set -euo pipefail
+
+    ready() { # <host> <port>: GET /-/ready answers 200
+      local status
+      exec 3<>"/dev/tcp/$1/$2" || return 1
+      printf 'GET /-/ready HTTP/1.0\r\nHost: %s\r\n\r\n' "$1" >&3
+      read -r _ status _ <&3 || return 1
+      exec 3<&-
+      [[ $status == 200 ]]
+    }
+
+    heartbeat=0
+    if ready kube-prometheus-stack-prometheus.monitoring.svc.cluster.local 9090 &&
+      ready kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local 9093; then
+      heartbeat=1
+    fi
+
+    newest=$(aws s3api list-objects-v2 --bucket "$ETCD_BUCKET" --prefix etcd/ \
+      --query 'max_by(Contents, &LastModified).LastModified' --output text)
+    if [[ $newest == None ]]; then
+      age=999
+    else
+      age=$((($(date +%s) - $(date -d "$newest" +%s)) / 3600))
+    fi
+
+    aws cloudwatch put-metric-data --namespace YPM/K3s --metric-data \
+      "MetricName=Heartbeat,Value=$heartbeat,Unit=Count" \
+      "MetricName=EtcdSnapshotAgeHours,Value=$age,Unit=Count"
+    echo "heartbeat=$heartbeat etcd_snapshot_age_hours=$age"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: heartbeat
+spec:
+  schedule: "* * * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 50
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 50
+      ttlSecondsAfterFinished: 600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: heartbeat
+        spec:
+          serviceAccountName: heartbeat
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: heartbeat
+              image: public.ecr.aws/aws-cli/aws-cli:2.38.6@sha256:bdb0dd07c54dfc7fe6526387dcf23eaab269875a20d647ae4de8196ea04d6bd4
+              command: [bash, /scripts/heartbeat.sh]
+              env:
+                - {name: ETCD_BUCKET, value: ypm-prod-k3s-etcd-780564622080}
+                - {name: HOME, value: /tmp}
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              resources:
+                requests: {cpu: 20m, memory: 64Mi}
+                limits: {memory: 128Mi}
+              volumeMounts:
+                - {name: scripts, mountPath: /scripts, readOnly: true}
+                - {name: tmp, mountPath: /tmp}
+          volumes:
+            - name: scripts
+              configMap:
+                name: heartbeat
+            - name: tmp
+              emptyDir: {}

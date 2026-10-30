@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: caddy
+data:
+  Caddyfile: |
+    {{- include "edge.caddyfile" . | nindent 4 }}

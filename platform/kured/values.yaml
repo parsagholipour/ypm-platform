@@ -1,0 +1,16 @@
+configuration:
+  period: 1h
+  rebootDays: [su]
+  startTime: "04:00"
+  endTime: "06:00"
+  timeZone: UTC
+  # One node: pods have nowhere to go, so don't wait long for the drain.
+  drainTimeout: 10m
+  forceReboot: true
+  skipWaitForDeleteTimeout: 60
+  prometheusUrl: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+  alertFilterRegexp: ^(Watchdog|InfoInhibitor)$
+  alertFiringOnly: true
+resources:
+  requests: {cpu: 10m, memory: 32Mi}
+  limits: {memory: 64Mi}

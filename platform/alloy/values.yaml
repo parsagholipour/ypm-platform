@@ -1,0 +1,76 @@
+alloy:
+  configMap:
+    content: |
+      discovery.kubernetes "pods" {
+        role = "pod"
+        selectors {
+          role  = "pod"
+          field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+        }
+      }
+
+      discovery.relabel "pods" {
+        targets = discovery.kubernetes.pods.targets
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          target_label  = "app"
+        }
+      }
+
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.pods.output
+        forward_to = [loki.write.default.receiver]
+      }
+
+      loki.source.kubernetes_events "cluster" {
+        job_name   = "kubernetes-events"
+        log_format = "json"
+        forward_to = [loki.write.default.receiver]
+      }
+
+      local.file_match "audit" {
+        path_targets = [{"__path__" = "/k3s-audit/audit.log", "job" = "k3s-audit"}]
+      }
+
+      loki.source.file "audit" {
+        targets       = local.file_match.audit.targets
+        tail_from_end = true
+        forward_to    = [loki.write.default.receiver]
+      }
+
+      loki.write "default" {
+        endpoint {
+          url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+        }
+      }
+  mounts:
+    extra:
+      - name: k3s-audit
+        mountPath: /k3s-audit
+        readOnly: true
+  # The audit log is root-only on the host.
+  securityContext:
+    runAsUser: 0
+  resources:
+    requests: {cpu: 20m, memory: 192Mi}
+    limits: {memory: 512Mi}
+controller:
+  type: daemonset
+  volumes:
+    extra:
+      - name: k3s-audit
+        hostPath:
+          path: /var/lib/rancher/k3s/server/logs
+          type: Directory

@@ -1,0 +1,44 @@
+image:
+  repository: 780564622080.dkr.ecr.us-east-1.amazonaws.com/ypm/yourplaymat-backend
+
+components:
+  yourplaymat:
+    ports: [{name: http, port: 1337}]
+    network: {edge: true, internet: true, rds: true}
+    readOnlyRootFilesystem: false
+    env: &yourplaymat-env
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "1337"
+      # The app runs its crons unless DISABLE_CRON_JOBS is non-empty; they run
+      # only in yourplaymat-worker.
+      DISABLE_CRON_JOBS: "true"
+      DATABASE_CLIENT: postgres
+      DATABASE_HOST: ${RDS_HOST}
+      DATABASE_PORT: ${RDS_PORT}
+      DATABASE_NAME: ypm_yourplaymat
+      DATABASE_USERNAME: ypm_yourplaymat
+      DATABASE_SSL: "true"
+      DATABASE_SSL_REJECT_UNAUTHORIZED: "true"
+      NODE_EXTRA_CA_CERTS: /etc/ssl/rds/rds-ca.pem
+    secretEnv:
+      paths: [env/yourplaymat]
+      keys:
+        DATABASE_PASSWORD: generated/db_yourplaymat_password
+    rdsCa: true
+    probe: {http: {path: /_health, port: 1337}, startupSeconds: 180}
+    resources: {cpu: 150m, memory: 256Mi, memoryLimit: 1Gi}
+
+  # Shopify sync and currency rates. 0 until the yourplaymat cutover (9.4).
+  yourplaymat-worker:
+    replicas: 0
+    strategy: Recreate
+    network: {internet: true, rds: true}
+    readOnlyRootFilesystem: false
+    env:
+      <<: *yourplaymat-env
+      DISABLE_CRON_JOBS: ""
+    secretsFrom: yourplaymat
+    rdsCa: true
+    probe: {http: {path: /_health, port: 1337}, startupSeconds: 180}
+    resources: {cpu: 50m, memory: 256Mi, memoryLimit: 1Gi}

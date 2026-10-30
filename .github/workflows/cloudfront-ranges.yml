@@ -1,0 +1,36 @@
+name: cloudfront-ranges
+
+on:
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Refresh and open a PR on change
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl -fsS https://ip-ranges.amazonaws.com/ip-ranges.json | jq -r '
+            "# Written by .github/workflows/cloudfront-ranges.yml from ip-ranges.json (CLOUDFRONT_ORIGIN_FACING).",
+            "trustedProxies:",
+            ([.prefixes[] | select(.service == "CLOUDFRONT_ORIGIN_FACING") | .ip_prefix] | sort | unique | .[] | "  - " + .)
+          ' > platform/edge/cloudfront-origin-facing.yaml
+          if git diff --quiet; then echo "unchanged"; exit 0; fi
+          branch="cloudfront-ranges-$(date +%Y%m%d)"
+          git switch -c "$branch"
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -qam "edge: refresh CloudFront origin-facing ranges"
+          git push -q origin "$branch"
+          gh pr create --base main --head "$branch" \
+            --title "edge: refresh CloudFront origin-facing ranges" \
+            --body "AWS changed CLOUDFRONT_ORIGIN_FACING in ip-ranges.json; Caddy must trust the new ranges to keep viewer IPs right."

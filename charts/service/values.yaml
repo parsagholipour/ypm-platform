@@ -1,0 +1,50 @@
+# Defaults for every YPM release. apps/_common.yaml and apps/<name>/values.yaml
+# override them; image.tag and image.digest come from the app's release branch.
+
+# The release image, used by every component and CronJob without its own.
+image:
+  repository: ""
+  tag: ""
+  digest: ""
+
+# Substituted for ${RDS_HOST} and ${RDS_PORT} in env values and secret templates.
+rds:
+  host: ""
+  port: 5432
+
+parameterPrefix: /ypm/prod
+
+# components: <name> -> a Deployment (+ Service when it has ports). Keys:
+#   replicas                 default 1; 0 parks a component (workers until cutover)
+#   strategy                 RollingUpdate (default) | Recreate (forced with persistence)
+#   image                    {repository, tag, digest}, replacing the release image
+#   command, args            container command and arguments
+#   hostname                 fixed pod hostname (RabbitMQ's node name)
+#   user, group              uid / gid, default 1000 / 1000 (group is also fsGroup)
+#   ports                    [{name, port}]; the Service exposes the same ports
+#   network                  {edge, internet, rds}: opt into the namespace's NetworkPolicies
+#   env                      plain variables; ${RDS_HOST} and ${RDS_PORT} are substituted
+#   secretEnv                paths: [SSM paths]: every parameter under each, by its last segment
+#                            keys: {VAR: SSM path}: single parameters
+#                            templates: {VAR: External Secrets template using those keys}
+#   secretFiles              [{parameter, path}]: a parameter mounted as a read-only file
+#   secretsFrom              use another component's secretEnv and secretFiles (workers)
+#   rdsCa                    mount the RDS CA bundle at /etc/ssl/rds/rds-ca.pem
+#   writable                 paths on emptyDir (the root filesystem is read-only)
+#   readOnlyRootFilesystem   default true
+#   addCapabilities          e.g. [NET_BIND_SERVICE]
+#   persistence              {size, mountPath}: new PVC <name>-data
+#                            {claim, mountPath}: an existing PVC
+#   probe                    {http: {path, port}} | {tcp: port} | {exec: [...]}, plus
+#                            startupSeconds (default 120) and optional liveness / startup
+#                            overrides of the same kind
+#   resources                {cpu, memory, memoryLimit}: cpu and memory are what the scheduler
+#                            reserves (measured usage + margin); memoryLimit is the hard cap
+#                            (today's compose mem_limit), default memory. No CPU limit.
+#   priorityClassName, terminationGracePeriodSeconds, progressDeadlineSeconds
+components: {}
+
+# cronJobs: <name> -> a CronJob running the release image. Keys: schedule, suspend,
+# command, env, secretKeys {VAR: {secret, key}}, labels, network,
+# resources {cpu, memory, memoryLimit}, timeoutSeconds (default 240).
+cronJobs: {}

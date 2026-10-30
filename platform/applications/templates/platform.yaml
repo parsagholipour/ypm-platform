@@ -1,0 +1,51 @@
+{{- range $name, $a := .Values.platform }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $name }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $a.wave | quote }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  {{- if $a.chart }}
+  sources:
+    - repoURL: {{ $a.repoURL }}
+      chart: {{ $a.chart }}
+      targetRevision: {{ $a.version | quote }}
+      helm:
+        releaseName: {{ $name }}
+        valueFiles:
+          - $values/platform/{{ $name }}/values.yaml
+    - repoURL: {{ $.Values.repoURL }}
+      targetRevision: {{ $.Values.revision }}
+      ref: values
+  {{- else }}
+  source:
+    repoURL: {{ $.Values.repoURL }}
+    targetRevision: {{ $.Values.revision }}
+    path: {{ $a.path }}
+    {{- with $a.valueFiles }}
+    helm:
+      releaseName: {{ $name }}
+      valueFiles: {{ toJson . }}
+    {{- end }}
+  {{- end }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ $a.namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      # CRDs from an earlier wave may not be in the API yet during a dry run.
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 10
+      backoff: {duration: 30s, factor: 2, maxDuration: 5m}
+{{- end }}

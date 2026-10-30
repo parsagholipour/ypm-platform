@@ -1,0 +1,15 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":dependencyDashboard"],
+  "minimumReleaseAge": "7 days",
+  "helm-values": { "managerFilePatterns": ["/^apps/.+\\.yaml$/", "/^platform/edge/values\\.yaml$/"] },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Platform charts in platform/applications/values.yaml",
+      "managerFilePatterns": ["/^platform/applications/values\\.yaml$/"],
+      "matchStrings": ["repoURL: \"(?<registryUrl>[^\"]+)\", chart: (?<depName>[^,]+), version: (?<currentValue>[^}\\s]+)"],
+      "datasourceTemplate": "helm"
+    }
+  ]
+}

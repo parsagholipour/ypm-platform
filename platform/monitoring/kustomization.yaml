@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: monitoring
+resources:
+  - rules.yaml
+  - probes.yaml
+  - heartbeat.yaml
+# Copy the dashboards from the yp-grafana repository into dashboards/ (one JSON
+# file each); Grafana's sidecar loads every ConfigMap labelled grafana_dashboard.
+configMapGenerator:
+  - name: dashboards-ypm
+    files:
+      - dashboards/nodejs-logs.json        # from yp-grafana; one line per dashboard file
+    options:
+      disableNameSuffixHash: true
+      labels:
+        grafana_dashboard: "1"

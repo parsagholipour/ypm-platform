@@ -1,0 +1,41 @@
+components:
+  # Object storage for PO Chain App and the CRM (bucket po-app).
+  minio:
+    image:
+      repository: 780564622080.dkr.ecr.us-east-1.amazonaws.com/ypm/minio
+      tag: v0.0.0-20260212201848-7aac2a2c5b7c
+      digest: sha256:3dfb5fcfa7a516486b4ee0f2a36b415783248331127e115761f02a22869d2516
+    command: [minio, server, /data, --address, ":9000"]
+    ports: [{name: s3, port: 9000}]
+    network: {edge: true}
+    env:
+      MINIO_BROWSER_REDIRECT_URL: https://dse1n4xfqb9q9.cloudfront.net
+      HOME: /tmp
+    secretEnv:
+      paths: [env/minio]
+    writable: [/tmp]
+    persistence: {size: 30Gi, mountPath: /data}
+    probe:
+      http: {path: /minio/health/ready, port: 9000}
+      liveness:
+        http: {path: /minio/health/live, port: 9000}
+      startupSeconds: 60
+    priorityClassName: ypm-critical
+    resources: {cpu: 100m, memory: 384Mi, memoryLimit: 1Gi}
+
+  # Its admin console; sign in with the MinIO root credentials.
+  minio-console:
+    image:
+      repository: 780564622080.dkr.ecr.us-east-1.amazonaws.com/ypm/minio-console
+      tag: v1.7.6
+      digest: sha256:0dc64b266ab0895ae3eff3499f52cf530feff94830c25729c2c2f281cfbe09a2
+    command: [console, server, --host, 0.0.0.0, --port, "9090"]
+    ports: [{name: http, port: 9090}]
+    network: {edge: true}
+    env:
+      CONSOLE_MINIO_SERVER: http://minio:9000
+      HOME: /tmp
+    writable: [/tmp]
+    probe: {http: {path: /login, port: 9090}, startupSeconds: 30}
+    terminationGracePeriodSeconds: 10
+    resources: {cpu: 25m, memory: 64Mi, memoryLimit: 256Mi}

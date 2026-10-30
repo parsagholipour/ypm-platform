@@ -1,0 +1,84 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dns
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+          podSelector:
+            matchLabels: {k8s-app: kube-dns}
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+---
+# Pods Caddy routes to (charts/service: network.edge).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: from-edge
+spec:
+  podSelector:
+    matchLabels: {ypm.io/edge: "true"}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: edge}
+          podSelector:
+            matchLabels: {app.kubernetes.io/name: caddy}
+---
+# HTTPS to the internet through the NAT instance; never to private ranges or
+# the instance metadata service (network.internet).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: to-internet
+spec:
+  podSelector:
+    matchLabels: {ypm.io/internet: "true"}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10, 169.254.0.0/16]
+      ports:
+        - {protocol: TCP, port: 443}
+---
+# PostgreSQL on RDS: the data subnets 10.40.20.0/24 and 10.40.21.0/24 (network.rds).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: to-rds
+spec:
+  podSelector:
+    matchLabels: {ypm.io/rds: "true"}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock: {cidr: 10.40.20.0/23}
+      ports:
+        - {protocol: TCP, port: 5432}
+---
+# Fallback for containers without resources (charts/service always sets them).
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: defaults
+spec:
+  limits:
+    - type: Container
+      defaultRequest: {cpu: 50m, memory: 128Mi}
+      default: {memory: 256Mi}

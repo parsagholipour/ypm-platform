@@ -1,0 +1,63 @@
+# MinIO: the apps' server-side calls, its console, and the one-off copy Job (9.6).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: minio
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: minio}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - {key: app.kubernetes.io/name, operator: In, values: [po-app, po-app-worker, crm, minio-console, minio-copy]}
+      ports:
+        - {protocol: TCP, port: 9000}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: minio-clients
+spec:
+  podSelector:
+    matchExpressions:
+      - {key: app.kubernetes.io/name, operator: In, values: [po-app, po-app-worker, crm, minio-console, minio-copy]}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: minio}
+      ports:
+        - {protocol: TCP, port: 9000}
+---
+# The CRM's scheduled dispatch CronJobs call the CRM itself.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: crm-dispatch
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: crm}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {ypm.io/cron: crm}
+      ports:
+        - {protocol: TCP, port: 3007}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: crm-dispatch-clients
+spec:
+  podSelector:
+    matchLabels: {ypm.io/cron: crm}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: crm}
+      ports:
+        - {protocol: TCP, port: 3007}

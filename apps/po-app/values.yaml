@@ -1,0 +1,52 @@
+image:
+  repository: 780564622080.dkr.ecr.us-east-1.amazonaws.com/ypm/po-chain-app
+
+components:
+  po-app:
+    ports: [{name: http, port: 8080}]
+    network: {edge: true, internet: true, rds: true}
+    env: &po-app-env
+      NODE_ENV: production
+      PORT: "8080"
+      NEXT_PUBLIC_APP_URL: https://www.distributor.arcane-fortress.com
+      # Server-side calls stay in the cluster; browsers get presigned links for
+      # the public endpoint.
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_PUBLIC_ENDPOINT: https://d1wcwwz39oad1v.cloudfront.net
+      # In-process schedulers: off here, on in po-app-worker. A job runs unless
+      # its toggle is "false".
+      SHOPIFY_INTERNAL_SYNC_ENABLED: "false"
+      CJDROPSHIPPING_INTERNAL_SYNC_ENABLED: "false"
+      CRM_INTERNAL_SYNC_ENABLED: "false"
+      WEBHOOK_INTERNAL_DISPATCH_ENABLED: "false"
+      OPERATOR_WARNING_SCAN_ENABLED: "false"
+    secretEnv:
+      paths: [env/po_app]
+      keys:
+        DATABASE_PASSWORD: generated/db_po_app_password
+      templates:
+        # Prisma's engines verify the RDS certificate only with sslaccept=strict
+        # and the CA in sslcert; PO's pg driver uses verify-full + sslrootcert.
+        DATABASE_URL: "postgresql://ypm_po_app:{{ .DATABASE_PASSWORD }}@${RDS_HOST}:${RDS_PORT}/ypm_po_app?sslmode=verify-full&sslrootcert=/etc/ssl/rds/rds-ca.pem&sslcert=/etc/ssl/rds/rds-ca.pem&sslaccept=strict"
+    writable: [/tmp, /app/.next/cache]
+    rdsCa: true
+    probe: {http: {path: /api/health, port: 8080}, startupSeconds: 120}
+    resources: {cpu: 150m, memory: 768Mi, memoryLimit: 1536Mi}
+
+  # The same image with all five schedulers on. 0 until the arcane cutover (9.6).
+  po-app-worker:
+    replicas: 0
+    strategy: Recreate
+    network: {internet: true, rds: true}
+    env:
+      <<: *po-app-env
+      SHOPIFY_INTERNAL_SYNC_ENABLED: "true"
+      CJDROPSHIPPING_INTERNAL_SYNC_ENABLED: "true"
+      CRM_INTERNAL_SYNC_ENABLED: "true"
+      WEBHOOK_INTERNAL_DISPATCH_ENABLED: "true"
+      OPERATOR_WARNING_SCAN_ENABLED: "true"
+    secretsFrom: po-app
+    writable: [/tmp, /app/.next/cache]
+    rdsCa: true
+    probe: {http: {path: /api/health, port: 8080}, startupSeconds: 120}
+    resources: {cpu: 50m, memory: 768Mi, memoryLimit: 1536Mi}

@@ -1,0 +1,52 @@
+name: lint
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+
+      - name: Install kubeconform
+        run: go install github.com/yannh/kubeconform/cmd/kubeconform@v0.8.0
+
+      - name: Render and validate
+        run: |
+          set -euo pipefail
+          validate() {
+            kubeconform -strict -summary -kubernetes-version 1.36.0 \
+              -schema-location default \
+              -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+          }
+
+          helm lint platform/applications
+          helm template root platform/applications | validate
+
+          helm lint platform/edge -f platform/edge/values.yaml -f platform/edge/cloudfront-origin-facing.yaml
+          helm template edge platform/edge -f platform/edge/values.yaml -f platform/edge/cloudfront-origin-facing.yaml | validate
+
+          for dir in platform/cluster platform/secret-stores platform/monitoring; do
+            kubectl kustomize "$dir" | validate
+          done
+
+          # Release images come from each app's release branch; lint with a placeholder.
+          for values in apps/*/values.yaml; do
+            app=$(basename "$(dirname "$values")")
+            [[ $app == _* ]] && continue
+            args=(-f apps/_common.yaml -f "$values" --set-string image.tag=lint)
+            helm lint charts/service "${args[@]}"
+            helm template "$app" charts/service "${args[@]}" | validate
+          done

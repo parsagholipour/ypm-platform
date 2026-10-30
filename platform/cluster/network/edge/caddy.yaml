@@ -1,0 +1,19 @@
+# CloudFront reaches Caddy through the NodePort with its own source address
+# (externalTrafficPolicy: Local), so ingress can't be narrowed by source; the
+# node's security group already admits only CloudFront's VPC origins.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: caddy
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: caddy}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - ports:
+        - {protocol: TCP, port: 8080}
+  egress:
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels: {ypm.io/edge: "true"}

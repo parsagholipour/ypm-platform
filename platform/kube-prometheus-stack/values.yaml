@@ -1,0 +1,155 @@
+crds:
+  enabled: true
+
+# k3s runs the controller manager, scheduler and proxy inside one process; their
+# metrics already come through the API server, so scraping them separately only
+# adds targets that look "down". etcd has its own endpoint (etcd-expose-metrics).
+kubeControllerManager: {enabled: false}
+kubeScheduler: {enabled: false}
+kubeProxy: {enabled: false}
+kubeEtcd:
+  enabled: true
+  endpoints: [10.40.10.20]
+  service:
+    enabled: true
+    port: 2381
+    targetPort: 2381
+  serviceMonitor:
+    scheme: http
+
+prometheusOperator:
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {memory: 256Mi}
+
+prometheus:
+  prometheusSpec:
+    retention: 15d
+    retentionSize: 18GB
+    # Pick up every ServiceMonitor, PodMonitor, Probe and rule, not only the chart's.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    resources:
+      requests: {cpu: 100m, memory: 1Gi}
+      limits: {memory: 2Gi}
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests: {storage: 20Gi}
+
+alertmanager:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::780564622080:role/ypm-prod-k3s-alertmanager
+  alertmanagerSpec:
+    resources:
+      requests: {cpu: 10m, memory: 64Mi}
+      limits: {memory: 128Mi}
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests: {storage: 1Gi}
+  # Everything that matters goes to the existing alerts topic (the same email as
+  # today's CloudWatch alarms). Credentials: IAM role for the service account;
+  # leave sigv4.role_arn empty or Alertmanager would assume a second role.
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      receiver: email
+      group_by: [alertname, namespace]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      routes:
+        - receiver: "null"
+          matchers: ['alertname =~ "Watchdog|InfoInhibitor"']
+        - receiver: "null"
+          matchers: ['severity = "info"']
+    inhibit_rules:
+      - source_matchers: ['severity = "critical"']
+        target_matchers: ['severity = "warning"']
+        equal: [alertname, namespace]
+    receivers:
+      - name: "null"
+      - name: email
+        sns_configs:
+          - topic_arn: arn:aws:sns:us-east-1:780564622080:ypm-prod-alerts
+            sigv4:
+              region: us-east-1
+            send_resolved: true
+            subject: '{{ if eq .Status "firing" }}ALARM{{ else }}OK{{ end }}: {{ .CommonLabels.alertname }} {{ .CommonLabels.namespace }}'
+            message: |-
+              {{ range .Alerts }}{{ .Status | toUpper }} {{ .Labels.alertname }} ({{ .Labels.severity }}) {{ .Labels.namespace }}
+              {{ .Annotations.summary }}{{ with .Annotations.description }}
+              {{ . }}{{ end }}
+
+              {{ end }}
+
+grafana:
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  # Caddy routes the existing Grafana distribution here (platform/edge).
+  podLabels:
+    ypm.io/edge: "true"
+  deploymentStrategy:
+    type: Recreate
+  persistence:
+    enabled: true
+    storageClassName: gp3
+    size: 2Gi
+  initChownData:
+    enabled: false
+  grafana.ini:
+    server:
+      root_url: https://d1f7dgee9pdx0s.cloudfront.net
+    security:
+      cookie_secure: true
+      disable_gravatar: true
+    users:
+      allow_sign_up: false
+    auth.anonymous:
+      enabled: false
+    analytics:
+      reporting_enabled: false
+      check_for_updates: false
+      check_for_plugin_updates: false
+    plugins:
+      preinstall_disabled: true
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+  # Use the uid your existing dashboards reference (yp-grafana's datasource
+  # provisioning), so they work unchanged.
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      uid: loki
+      access: proxy
+      url: http://loki.monitoring.svc.cluster.local:3100
+  resources:
+    requests: {cpu: 20m, memory: 192Mi}
+    limits: {memory: 384Mi}
+
+kube-state-metrics:
+  resources:
+    requests: {cpu: 10m, memory: 64Mi}
+    limits: {memory: 128Mi}
+
+prometheus-node-exporter:
+  resources:
+    requests: {cpu: 10m, memory: 32Mi}
+    limits: {memory: 64Mi}

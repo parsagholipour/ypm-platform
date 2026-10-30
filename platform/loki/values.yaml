@@ -1,0 +1,49 @@
+deploymentMode: Monolithic
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  schemaConfig:
+    configs:
+      - from: "2026-10-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  storage:
+    type: s3
+    bucketNames:
+      chunks: ypm-prod-k3s-loki-780564622080
+      ruler: ypm-prod-k3s-loki-780564622080
+    s3:
+      region: us-east-1
+  limits_config:
+    retention_period: 744h
+  compactor:
+    retention_enabled: true
+    delete_request_store: s3
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::780564622080:role/ypm-prod-k3s-loki
+singleBinary:
+  replicas: 1
+  persistence:
+    storageClass: gp3
+    size: 10Gi
+  resources:
+    requests: {cpu: 50m, memory: 512Mi}
+    limits: {memory: 1Gi}
+backend: {replicas: 0}
+read: {replicas: 0}
+write: {replicas: 0}
+gateway: {enabled: false}
+chunksCache: {enabled: false}
+resultsCache: {enabled: false}
+memcached: {enabled: false}
+lokiCanary: {enabled: false}
+test: {enabled: false}
+minio: {enabled: false}
+sidecar:
+  rules: {enabled: false}

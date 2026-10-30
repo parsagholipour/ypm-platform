@@ -1,0 +1,143 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ssm-reader
+  namespace: ypm
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::780564622080:role/ypm-prod-k3s-secrets-ypm
+automountServiceAccountToken: false
+---
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: ssm
+  namespace: ypm
+spec:
+  provider:
+    aws:
+      service: ParameterStore
+      region: us-east-1
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: ssm-reader
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ssm-reader
+  namespace: yourplaymat
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::780564622080:role/ypm-prod-k3s-secrets-yourplaymat
+automountServiceAccountToken: false
+---
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: ssm
+  namespace: yourplaymat
+spec:
+  provider:
+    aws:
+      service: ParameterStore
+      region: us-east-1
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: ssm-reader
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ssm-reader
+  namespace: arcane
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::780564622080:role/ypm-prod-k3s-secrets-arcane
+automountServiceAccountToken: false
+---
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: ssm
+  namespace: arcane
+spec:
+  provider:
+    aws:
+      service: ParameterStore
+      region: us-east-1
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: ssm-reader
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ssm-reader
+  namespace: git-backup
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::780564622080:role/ypm-prod-k3s-secrets-git-backup
+automountServiceAccountToken: false
+---
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: ssm
+  namespace: git-backup
+spec:
+  provider:
+    aws:
+      service: ParameterStore
+      region: us-east-1
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: ssm-reader
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ssm-reader
+  namespace: monitoring
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::780564622080:role/ypm-prod-k3s-secrets-monitoring
+automountServiceAccountToken: false
+---
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: ssm
+  namespace: monitoring
+spec:
+  provider:
+    aws:
+      service: ParameterStore
+      region: us-east-1
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: ssm-reader
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ssm-reader
+  namespace: argocd
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::780564622080:role/ypm-prod-k3s-secrets-argocd
+automountServiceAccountToken: false
+---
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: ssm
+  namespace: argocd
+spec:
+  provider:
+    aws:
+      service: ParameterStore
+      region: us-east-1
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: ssm-reader

@@ -1,0 +1,53 @@
+{{- range $name, $a := .Values.apps }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $name }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "90"
+    {{- if $a.repo }}
+    # Commit status argocd/<app> on the release commit (section 8).
+    notifications.argoproj.io/subscribe.on-release-deployed.github: ""
+    notifications.argoproj.io/subscribe.on-release-failed.github: ""
+    {{- end }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: apps
+  # Source 0: the chart, 1: values from this repo, 2: the app's release branch.
+  # The notification templates rely on this order.
+  sources:
+    - repoURL: {{ $.Values.repoURL }}
+      targetRevision: {{ $.Values.revision }}
+      path: charts/service
+      helm:
+        releaseName: {{ $name }}
+        valueFiles:
+          - $values/apps/_common.yaml
+          - $values/apps/{{ $name }}/values.yaml
+          {{- if $a.repo }}
+          - $release/image.yaml
+          {{- end }}
+    - repoURL: {{ $.Values.repoURL }}
+      targetRevision: {{ $.Values.revision }}
+      ref: values
+    {{- with $a.repo }}
+    - repoURL: https://github.com/parsagholipour/{{ . }}.git
+      targetRevision: release
+      ref: release
+    {{- end }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ $a.namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff: {duration: 30s, factor: 2, maxDuration: 5m}
+{{- end }}

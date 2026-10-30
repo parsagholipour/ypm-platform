@@ -1,0 +1,19 @@
+image: public.ecr.aws/docker/library/caddy:2.11.7-alpine@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5
+replicas: 2
+# CloudFront's VPC origin for the k3s node targets this port (infra/k3s.tf).
+nodePort: 30080
+
+# X-Ypm-Origin value (the distribution's key in Terraform) -> upstream.
+routes:
+  backend: backend.ypm.svc.cluster.local:1337
+  discord: discord.ypm.svc.cluster.local:1337
+  grafana: kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80
+  yourplaymat: yourplaymat.yourplaymat.svc.cluster.local:1337
+  translations: translations.yourplaymat.svc.cluster.local:8080
+  translations_long: translations-long.yourplaymat.svc.cluster.local:8080
+  arcane_git_backup: git-backup-web.git-backup.svc.cluster.local:3000
+  arcane_auth: keycloak.arcane.svc.cluster.local:8080
+  arcane_distributor: po-app.arcane.svc.cluster.local:8080
+  arcane_crm: crm.arcane.svc.cluster.local:3007
+  minio: minio.arcane.svc.cluster.local:9000
+  minio_console: minio-console.arcane.svc.cluster.local:9090

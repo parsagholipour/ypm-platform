@@ -1,0 +1,98 @@
+global:
+  domain: localhost:8080
+
+configs:
+  params:
+    server.insecure: true
+  cm:
+    admin.enabled: true
+    exec.enabled: false
+    statusbadge.enabled: false
+    users.anonymous.enabled: false
+    # Poll Git every minute (no inbound webhooks: nothing is exposed).
+    timeout.reconciliation: 60s
+    # Sync waves in the app of apps wait until each child Application is healthy.
+    resource.customizations.health.argoproj.io_Application: |
+      hs = {}
+      hs.status = "Progressing"
+      hs.message = ""
+      if obj.status ~= nil and obj.status.health ~= nil then
+        hs.status = obj.status.health.status
+        if obj.status.health.message ~= nil then
+          hs.message = obj.status.health.message
+        end
+      end
+      return hs
+  rbac:
+    policy.default: ""
+
+dex:
+  enabled: false
+
+controller:
+  resources:
+    requests: {cpu: 100m, memory: 512Mi}
+    limits: {memory: 768Mi}
+repoServer:
+  resources:
+    requests: {cpu: 50m, memory: 256Mi}
+    limits: {memory: 512Mi}
+server:
+  resources:
+    requests: {cpu: 20m, memory: 64Mi}
+    limits: {memory: 256Mi}
+applicationSet:
+  resources:
+    requests: {cpu: 10m, memory: 64Mi}
+    limits: {memory: 128Mi}
+redis:
+  resources:
+    requests: {cpu: 20m, memory: 64Mi}
+    limits: {memory: 128Mi}
+
+# Deploy results as GitHub commit statuses on each app's release commit
+# (context argocd/<app>). The Deploy workflows wait for them (section 8).
+# Apps are multi-source; source 2 is the release branch (platform/applications).
+notifications:
+  enabled: true
+  argocdUrl: http://localhost:8080
+  secret:
+    create: false        # argocd-notifications-secret comes from External Secrets
+  resources:
+    requests: {cpu: 10m, memory: 64Mi}
+    limits: {memory: 128Mi}
+  notifiers:
+    service.github: |
+      appID: $github-appID
+      installationID: $github-installationID
+      privateKey: $github-privateKey
+  triggers:
+    trigger.on-release-deployed: |
+      - description: The release is synced and every resource is healthy
+        oncePer: app.status.operationState.syncResult.revisions
+        send: [release-succeeded]
+        when: app.status.operationState != nil and app.status.operationState.phase in ['Succeeded'] and app.status.health.status == 'Healthy'
+    trigger.on-release-failed: |
+      - description: The sync failed or the release never became healthy
+        oncePer: app.status.operationState.syncResult.revisions
+        send: [release-failed]
+        when: app.status.operationState != nil and (app.status.operationState.phase in ['Error', 'Failed'] or app.status.health.status == 'Degraded')
+  templates:
+    template.release-succeeded: |
+      message: "{{.app.metadata.name}} is deployed and healthy"
+      github:
+        repoURLPath: "{{ (index .app.spec.sources 2).repoURL }}"
+        revisionPath: "{{ index .app.status.operationState.syncResult.revisions 2 }}"
+        status:
+          state: success
+          label: "argocd/{{.app.metadata.name}}"
+          targetURL: "{{.context.argocdUrl}}/applications/argocd/{{.app.metadata.name}}"
+    template.release-failed: |
+      message: "{{.app.metadata.name}} failed to deploy"
+      github:
+        repoURLPath: "{{ (index .app.spec.sources 2).repoURL }}"
+        revisionPath: "{{ index .app.status.operationState.syncResult.revisions 2 }}"
+        status:
+          state: failure
+          label: "argocd/{{.app.metadata.name}}"
+          targetURL: "{{.context.argocdUrl}}/applications/argocd/{{.app.metadata.name}}"

@@ -1,0 +1,172 @@
+{{- range $name, $c := .Values.components }}
+{{- if not $c.resources }}{{ fail (printf "components.%s.resources is required" $name) }}{{ end }}
+{{- $owner := $c }}
+{{- if $c.secretsFrom }}
+{{- $owner = index $.Values.components $c.secretsFrom }}
+{{- if not $owner }}{{ fail (printf "components.%s.secretsFrom: no component %s" $name $c.secretsFrom) }}{{ end }}
+{{- end }}
+{{- $secretName := $c.secretsFrom | default $name }}
+{{- $persistent := not (empty $c.persistence) }}
+{{- $user := hasKey $c "user" | ternary $c.user 1000 }}
+{{- $group := hasKey $c "group" | ternary $c.group 1000 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "service.labels" (dict "name" $name "root" $) | nindent 4 }}
+  annotations:
+    # Restart when a Secret or ConfigMap it uses changes (Reloader).
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: {{ hasKey $c "replicas" | ternary $c.replicas 1 }}
+  revisionHistoryLimit: 5
+  progressDeadlineSeconds: {{ $c.progressDeadlineSeconds | default 600 }}
+  selector:
+    matchLabels:
+      {{- include "service.selectorLabels" (dict "name" $name "root" $) | nindent 6 }}
+  strategy:
+    {{- if or $persistent (eq ($c.strategy | default "RollingUpdate") "Recreate") }}
+    type: Recreate
+    {{- else }}
+    # The new pod must be ready before the old one stops: a broken release
+    # never takes traffic.
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "service.labels" (dict "name" $name "root" $) | nindent 8 }}
+        {{- range $flag, $on := ($c.network | default dict) }}
+        {{- if $on }}
+        ypm.io/{{ $flag }}: "true"
+        {{- end }}
+        {{- end }}
+    spec:
+      automountServiceAccountToken: false
+      # No <SERVICE>_PORT-style variables: they would clash with app settings
+      # such as MINIO_PORT.
+      enableServiceLinks: false
+      {{- with $c.hostname }}
+      hostname: {{ . }}
+      {{- end }}
+      {{- with $c.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ $c.terminationGracePeriodSeconds | default 30 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ $user }}
+        runAsGroup: {{ $group }}
+        fsGroup: {{ $group }}
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: {{ $name }}
+          image: {{ include "service.image" (dict "root" $ "component" $c) }}
+          imagePullPolicy: IfNotPresent
+          {{- with $c.command }}
+          command: {{ toJson . }}
+          {{- end }}
+          {{- with $c.args }}
+          args: {{ toJson . }}
+          {{- end }}
+          {{- if $owner.secretEnv }}
+          envFrom:
+            - secretRef:
+                name: {{ $secretName }}-env
+          {{- end }}
+          {{- with $c.env }}
+          # Explicit values win over envFrom.
+          env:
+            {{- range $k, $v := . }}
+            - name: {{ $k }}
+              value: {{ include "service.subst" (dict "root" $ "value" $v) | quote }}
+            {{- end }}
+          {{- end }}
+          {{- with $c.ports }}
+          ports:
+            {{- range . }}
+            - name: {{ .name }}
+              containerPort: {{ .port }}
+              protocol: TCP
+            {{- end }}
+          {{- end }}
+          {{- with $c.probe }}
+          startupProbe:
+            {{- include "service.probe" (merge (dict) (.startup | default dict) .) | nindent 12 }}
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: {{ div (.startupSeconds | default 120) 5 }}
+          readinessProbe:
+            {{- include "service.probe" . | nindent 12 }}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            {{- include "service.probe" (merge (dict) (.liveness | default dict) .) | nindent 12 }}
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+          {{- end }}
+          resources:
+            requests:
+              cpu: {{ $c.resources.cpu | default "100m" }}
+              memory: {{ $c.resources.memory }}
+            limits:
+              memory: {{ $c.resources.memoryLimit | default $c.resources.memory }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ hasKey $c "readOnlyRootFilesystem" | ternary $c.readOnlyRootFilesystem true }}
+            capabilities:
+              drop: [ALL]
+              {{- with $c.addCapabilities }}
+              add: {{ toJson . }}
+              {{- end }}
+          volumeMounts:
+            {{- range $i, $path := $c.writable }}
+            - name: writable-{{ $i }}
+              mountPath: {{ $path }}
+            {{- end }}
+            {{- if $c.rdsCa }}
+            - name: rds-ca
+              mountPath: /etc/ssl/rds
+              readOnly: true
+            {{- end }}
+            {{- range $owner.secretFiles }}
+            - name: secret-files
+              mountPath: {{ .path }}
+              subPath: {{ base .path }}
+              readOnly: true
+            {{- end }}
+            {{- with $c.persistence }}
+            - name: data
+              mountPath: {{ .mountPath }}
+            {{- end }}
+      volumes:
+        {{- range $i, $path := $c.writable }}
+        - name: writable-{{ $i }}
+          emptyDir: {}
+        {{- end }}
+        {{- if $c.rdsCa }}
+        - name: rds-ca
+          configMap:
+            name: {{ $.Release.Name }}-rds-ca
+        {{- end }}
+        {{- if $owner.secretFiles }}
+        - name: secret-files
+          secret:
+            secretName: {{ $secretName }}-files
+            defaultMode: 0440
+        {{- end }}
+        {{- with $c.persistence }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .claim | default (printf "%s-data" $name) }}
+        {{- end }}
+{{- end }}

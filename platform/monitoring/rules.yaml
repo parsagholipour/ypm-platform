@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ypm
+spec:
+  groups:
+    - name: ypm.availability
+      rules:
+        - alert: YpmEndpointDown
+          expr: probe_success == 0
+          for: 3m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.instance }} is failing from the internet"
+            description: "The blackbox probe through CloudFront has failed for 3 minutes. Check the app's pods (kubectl -n <namespace> get pods) and Caddy's logs (kubectl -n edge logs deploy/caddy)."
+        - alert: YpmWorkloadUnavailable
+          expr: |
+            kube_deployment_spec_replicas{namespace=~"edge|ypm|yourplaymat|arcane|git-backup"}
+              > kube_deployment_status_replicas_available{namespace=~"edge|ypm|yourplaymat|arcane|git-backup"}
+          for: 3m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.deployment }} has fewer ready pods than it should"
+            description: "For 3 minutes: crashing, failing its health check, or a release that never became ready. kubectl -n {{ $labels.namespace }} describe deployment {{ $labels.deployment }}"

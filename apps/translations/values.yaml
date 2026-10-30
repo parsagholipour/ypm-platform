@@ -1,0 +1,41 @@
+image:
+  repository: 780564622080.dkr.ecr.us-east-1.amazonaws.com/ypm/translation-service
+
+components:
+  # translations.yourplaymat.com (unique originals)
+  translations:
+    command: [/app/translation]
+    ports: [{name: http, port: 8080}]
+    network: {edge: true, internet: true, rds: true}
+    env: &translations-env
+      PORT: "8080"
+      # The per-IP daily limit keys on X-Real-IP, which Caddy sets to the
+      # viewer's address. Caddy's pods are in the cluster's pod range.
+      PROXY_HEADER: X-Real-IP
+      TRUSTED_PROXIES: 10.42.0.0/16
+      DATABASE_URL: "host=${RDS_HOST} port=${RDS_PORT} dbname=ypm_translations user=ypm_translations sslmode=verify-full sslrootcert=/etc/ssl/rds/rds-ca.pem"
+    secretEnv:
+      paths: [env/translations]
+      keys:
+        PGPASSWORD: generated/db_translations_password
+    rdsCa: true
+    probe: {http: {path: /missing-translations, port: 8080}, startupSeconds: 60}
+    terminationGracePeriodSeconds: 10
+    resources: {cpu: 50m, memory: 96Mi, memoryLimit: 512Mi}
+
+  # translations-long.yourplaymat.com: built with -tags allowduplicates.
+  translations-long:
+    command: [/app/translation-long]
+    ports: [{name: http, port: 8080}]
+    network: {edge: true, internet: true, rds: true}
+    env:
+      <<: *translations-env
+      DATABASE_URL: "host=${RDS_HOST} port=${RDS_PORT} dbname=ypm_translations_long user=ypm_translations_long sslmode=verify-full sslrootcert=/etc/ssl/rds/rds-ca.pem"
+    secretEnv:
+      paths: [env/translations_long]
+      keys:
+        PGPASSWORD: generated/db_translations_long_password
+    rdsCa: true
+    probe: {http: {path: /missing-translations, port: 8080}, startupSeconds: 60}
+    terminationGracePeriodSeconds: 10
+    resources: {cpu: 50m, memory: 96Mi, memoryLimit: 512Mi}

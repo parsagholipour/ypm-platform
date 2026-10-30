@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: caddy
+spec:
+  type: NodePort
+  # Local: no SNAT, so Caddy sees CloudFront's own address and can trust the
+  # X-Forwarded-For it sends. (ServiceLB would masquerade it.)
+  externalTrafficPolicy: Local
+  selector:
+    app.kubernetes.io/name: caddy
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      nodePort: {{ .Values.nodePort }}

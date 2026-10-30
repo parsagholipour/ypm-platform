@@ -1,0 +1,52 @@
+image:
+  repository: 780564622080.dkr.ecr.us-east-1.amazonaws.com/ypm/backend
+
+components:
+  backend:
+    ports: [{name: http, port: 1337}]
+    network: {edge: true, internet: true, rds: true}
+    # Strapi writes inside its app directory at runtime, as on the host.
+    readOnlyRootFilesystem: false
+    env: &backend-env
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "1337"
+      # Crons run only in backend-worker.
+      CRON_ENABLED: "false"
+      DATABASE_CLIENT: postgres
+      DATABASE_HOST: ${RDS_HOST}
+      DATABASE_PORT: ${RDS_PORT}
+      DATABASE_NAME: ypm_backend
+      DATABASE_USERNAME: ypm_backend
+      DATABASE_SSL: "true"
+      DATABASE_SSL_REJECT_UNAUTHORIZED: "true"
+      NODE_EXTRA_CA_CERTS: /etc/ssl/rds/rds-ca.pem
+      LOKI_HOST: http://loki.monitoring.svc.cluster.local:3100
+      GCP_SERVICE_ACCOUNT_PATH: /run/secrets/gcp-key.json
+    secretEnv:
+      paths: [env/backend]
+      keys:
+        DATABASE_PASSWORD: generated/db_backend_password
+        RABBITMQ_PASSWORD: generated/rabbitmq_password
+      templates:
+        RABBITMQ_URL: "amqp://ypm:{{ .RABBITMQ_PASSWORD }}@rabbitmq:5672"
+    secretFiles:
+      - {parameter: files/backend/gcp-key.json, path: /run/secrets/gcp-key.json}
+    rdsCa: true
+    probe: {http: {path: /_health, port: 1337}, startupSeconds: 180}
+    resources: {cpu: 200m, memory: 384Mi, memoryLimit: 2Gi}
+
+  # The same image with crons on: one replica, replaced (never rolled), so a
+  # cron never runs twice. 0 until the ypm cutover (9.7).
+  backend-worker:
+    replicas: 0
+    strategy: Recreate
+    network: {internet: true, rds: true}
+    readOnlyRootFilesystem: false
+    env:
+      <<: *backend-env
+      CRON_ENABLED: "true"
+    secretsFrom: backend
+    rdsCa: true
+    probe: {http: {path: /_health, port: 1337}, startupSeconds: 180}
+    resources: {cpu: 50m, memory: 384Mi, memoryLimit: 1536Mi}

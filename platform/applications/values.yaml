@@ -1,0 +1,38 @@
+repoURL: https://github.com/parsagholipour/ypm-platform.git
+revision: main
+
+# Platform add-ons. wave: lower syncs first, and each wave waits for the one before
+# it to be healthy. chart apps read platform/<name>/values.yaml; path apps are
+# kustomize directories or local Helm charts.
+platform:
+  cluster:               {wave: -50, namespace: kube-system, path: platform/cluster}
+  cert-manager:          {wave: -40, namespace: cert-manager, repoURL: "https://charts.jetstack.io", chart: cert-manager, version: v1.21.3}
+  pod-identity-webhook:  {wave: -30, namespace: pod-identity-webhook, repoURL: "https://jkroepke.github.io/helm-charts", chart: amazon-eks-pod-identity-webhook, version: 2.6.5}
+  external-secrets:      {wave: -30, namespace: external-secrets, repoURL: "https://charts.external-secrets.io", chart: external-secrets, version: 2.13.0}
+  aws-ebs-csi-driver:    {wave: -20, namespace: kube-system, repoURL: "https://kubernetes-sigs.github.io/aws-ebs-csi-driver", chart: aws-ebs-csi-driver, version: 2.67.1}
+  secret-stores:         {wave: -20, namespace: argocd, path: platform/secret-stores}
+  argocd:                {wave: -10, namespace: argocd, repoURL: "https://argoproj.github.io/argo-helm", chart: argo-cd, version: 10.10.5}
+  reloader:              {wave: 0, namespace: reloader, repoURL: "https://stakater.github.io/stakater-charts", chart: reloader, version: 2.2.18}
+  kured:                 {wave: 0, namespace: kube-system, repoURL: "https://kubereboot.github.io/charts", chart: kured, version: 6.1.0}
+  kube-prometheus-stack: {wave: 10, namespace: monitoring, repoURL: "https://prometheus-community.github.io/helm-charts", chart: kube-prometheus-stack, version: 92.11.0}
+  loki:                  {wave: 20, namespace: monitoring, repoURL: "https://grafana-community.github.io/helm-charts", chart: loki, version: 19.1.1}
+  alloy:                 {wave: 20, namespace: monitoring, repoURL: "https://grafana.github.io/helm-charts", chart: alloy, version: 1.14.2}
+  blackbox-exporter:     {wave: 20, namespace: monitoring, repoURL: "https://prometheus-community.github.io/helm-charts", chart: prometheus-blackbox-exporter, version: 11.20.2}
+  monitoring:            {wave: 30, namespace: monitoring, path: platform/monitoring}
+  edge:                  {wave: 40, namespace: edge, path: platform/edge, valueFiles: [values.yaml, cloudfront-origin-facing.yaml]}
+
+# YPM apps, all deployed with charts/service. repo: the app's GitHub repository,
+# whose release branch holds image.yaml (section 8). Apps without one (third-party
+# images) keep their image in apps/<name>/values.yaml.
+apps:
+  rabbitmq:     {namespace: ypm}
+  backend:      {namespace: ypm, repo: ypm-export-backend}
+  discord:      {namespace: ypm, repo: yp-discord-service}
+  yourplaymat:  {namespace: yourplaymat, repo: yourplaymat-backend}
+  translations: {namespace: yourplaymat, repo: translation-service}
+  git-backup:   {namespace: git-backup, repo: urludum-corp-git-backup}
+  # Arcane Fortress: enabled at its cutover, once their images exist (Railway -> k3s).
+  # keycloak:     {namespace: arcane, repo: af-keycloak}
+  # minio:        {namespace: arcane}
+  # po-app:       {namespace: arcane, repo: po-chain-app}
+  # crm:          {namespace: arcane, repo: arcane-crm}

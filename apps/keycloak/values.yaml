@@ -1,0 +1,35 @@
+image:
+  repository: 780564622080.dkr.ecr.us-east-1.amazonaws.com/ypm/keycloak
+
+components:
+  keycloak:
+    # One Keycloak at a time: its caches are local, and a new version migrates
+    # the schema on start.
+    strategy: Recreate
+    user: 1000
+    group: 0
+    ports:
+      - {name: http, port: 8080}
+      - {name: management, port: 9000}
+    network: {edge: true, internet: true, rds: true}
+    env:
+      KC_DB_URL: "jdbc:postgresql://${RDS_HOST}:${RDS_PORT}/ypm_keycloak?ssl=true&sslmode=verify-full&sslrootcert=/etc/ssl/rds/rds-ca.pem"
+      KC_DB_USERNAME: ypm_keycloak
+      # The default of 100 connections would exhaust the database.
+      KC_DB_POOL_MAX_SIZE: "20"
+    secretEnv:
+      paths: [env/keycloak]
+      keys:
+        KC_DB_PASSWORD: generated/db_keycloak_password
+    # Transaction-recovery store and JVM scratch files.
+    writable: [/tmp, /opt/keycloak/data]
+    rdsCa: true
+    probe:
+      http: {path: /health/ready, port: 9000}
+      liveness:
+        http: {path: /health/live, port: 9000}
+      startup:
+        http: {path: /health/started, port: 9000}
+      startupSeconds: 240
+    # The JVM takes 70% of this for its heap.
+    resources: {cpu: 250m, memory: 1280Mi, memoryLimit: 1536Mi}

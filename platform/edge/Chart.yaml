@@ -1,0 +1,5 @@
+apiVersion: v2
+name: edge
+description: Caddy behind CloudFront, routing on X-Ypm-Origin
+type: application
+version: 1.0.0

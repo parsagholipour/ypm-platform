@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: public-endpoints
+spec:
+  interval: 60s
+  module: http_2xx
+  prober:
+    url: blackbox-exporter.monitoring.svc.cluster.local:9115
+  targets:
+    staticConfig:
+      static:
+        - https://api.fulfillment.yourplaymat.com/_health
+        - https://d3khvucwdwsmgy.cloudfront.net/_health
+        - https://d1f7dgee9pdx0s.cloudfront.net/api/health
+        - https://d35q6fe2k739ny.cloudfront.net/api/auth/status
+        - https://d1wcwwz39oad1v.cloudfront.net/minio/health/live
+        - https://dse1n4xfqb9q9.cloudfront.net/login
+        # api.yourplaymat.com's certificate never validated; its distribution's own name:
+        - https://d1oa5rbnxmcetj.cloudfront.net/_health
+        - https://translations.yourplaymat.com/missing-translations
+        - https://translations-long.yourplaymat.com/missing-translations
+        - https://www.auth.arcane-fortress.com/realms/master/.well-known/openid-configuration
+        - https://www.distributor.arcane-fortress.com/api/health
+        # Add at the Arcane cutover, once crm.arcane-fortress.com exists:
+        # - https://crm.arcane-fortress.com/api/auth/providers

@@ -1,0 +1,12 @@
+image:
+  tag: v0.6.18
+config:
+  defaultAwsRegion: us-east-1
+  stsRegionalEndpoint: true
+  tokenAudience: sts.amazonaws.com
+securityContext:
+  # The chart defaults to false, which Pod Security "restricted" rejects.
+  runAsNonRoot: true
+resources:
+  requests: {cpu: 10m, memory: 32Mi}
+  limits: {memory: 64Mi}

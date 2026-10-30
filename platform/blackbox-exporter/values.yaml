@@ -1,0 +1,12 @@
+fullnameOverride: blackbox-exporter
+config:
+  modules:
+    http_2xx:
+      prober: http
+      timeout: 10s
+      http:
+        follow_redirects: true
+        preferred_ip_protocol: ip4
+resources:
+  requests: {cpu: 10m, memory: 32Mi}
+  limits: {memory: 64Mi}
