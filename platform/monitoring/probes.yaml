@@ -22,5 +22,4 @@ spec:
         - https://translations-long.yourplaymat.com/missing-translations
         - https://www.auth.arcane-fortress.com/realms/master/.well-known/openid-configuration
         - https://www.distributor.arcane-fortress.com/api/health
-        # Add at the Arcane cutover, once crm.arcane-fortress.com exists:
-        # - https://crm.arcane-fortress.com/api/auth/providers
+        - https://crm.arcane-fortress.com/api/auth/providers

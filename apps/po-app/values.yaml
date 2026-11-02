@@ -3,7 +3,6 @@ image:
 
 components:
   po-app:
-    replicas: 0      # until the final data copy (9.6)
     ports: [{name: http, port: 8080}]
     network: {edge: true, internet: true, rds: true}
     env: &po-app-env
@@ -34,9 +33,8 @@ components:
     probe: {http: {path: /api/health, port: 8080}, startupSeconds: 120}
     resources: {cpu: 150m, memory: 768Mi, memoryLimit: 1536Mi}
 
-  # The same image with all five schedulers on. 0 until the arcane cutover (9.6).
+  # The same image with all five schedulers on.
   po-app-worker:
-    replicas: 0
     strategy: Recreate
     network: {internet: true, rds: true}
     env:

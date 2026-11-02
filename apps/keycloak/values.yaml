@@ -3,7 +3,6 @@ image:
 
 components:
   keycloak:
-    replicas: 0      # until the final data copy (9.6)
     # One Keycloak at a time: its caches are local, and a new version migrates
     # the schema on start.
     strategy: Recreate

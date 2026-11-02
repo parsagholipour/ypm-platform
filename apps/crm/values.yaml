@@ -3,7 +3,6 @@ image:
 
 components:
   crm:
-    replicas: 0      # until the final data copy (9.6)
     ports: [{name: http, port: 3007}]
     network: {edge: true, internet: true, rds: true}
     env:
