@@ -3,6 +3,7 @@ image:
 
 components:
   po-app:
+    replicas: 0      # until the final data copy (9.6)
     ports: [{name: http, port: 8080}]
     network: {edge: true, internet: true, rds: true}
     env: &po-app-env

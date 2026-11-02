@@ -31,8 +31,8 @@ apps:
   yourplaymat:  {namespace: yourplaymat, repo: yourplaymat-backend}
   translations: {namespace: yourplaymat, repo: translation-service}
   git-backup:   {namespace: git-backup, repo: urludum-corp-git-backup}
-  # Arcane Fortress: enabled at its cutover, once their images exist (Railway -> k3s).
-  # keycloak:     {namespace: arcane, repo: af-keycloak}
-  # minio:        {namespace: arcane}
-  # po-app:       {namespace: arcane, repo: po-chain-app}
-  # crm:          {namespace: arcane, repo: arcane-crm}
+  # Arcane Fortress
+  keycloak:     {namespace: arcane, repo: af-keycloak}
+  minio:        {namespace: arcane}
+  po-app:       {namespace: arcane, repo: po-chain-app}
+  crm:          {namespace: arcane, repo: arcane-crm}
