@@ -23,3 +23,5 @@ spec:
         - https://www.auth.arcane-fortress.com/realms/master/.well-known/openid-configuration
         - https://www.distributor.arcane-fortress.com/api/health
         - https://crm.arcane-fortress.com/api/auth/providers
+        - https://api.arcane-fortress.com/ping
+        - https://admin.arcane-fortress.com/login
