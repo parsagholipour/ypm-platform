@@ -7,7 +7,6 @@ components:
   # storefront (Shopify Oxygen) reads it server-side through its CMS_API_URL; the
   # admin panel calls it in-cluster.
   arcane-api:
-    replicas: 0                     # parked until the data copy
     user: 10001                     # the image's arcane user
     group: 10001
     ports: [{name: http, port: 8080}]

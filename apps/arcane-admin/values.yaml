@@ -6,7 +6,6 @@ components:
   # at admin.arcane-fortress.com. Its /api/* is a server-side proxy to arcane-api
   # that keeps the session in cookies.
   arcane-admin:
-    replicas: 0                     # parked until the data copy
     ports: [{name: http, port: 3000}]
     network: {edge: true}
     env:
