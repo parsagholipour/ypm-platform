@@ -36,3 +36,6 @@ apps:
   minio:        {namespace: arcane}
   po-app:       {namespace: arcane, repo: po-chain-app}
   crm:          {namespace: arcane, repo: arcane-crm}
+  # Arcane Fortress storefront CMS (Railway project "Arcane Fortress")
+  arcane-api:   {namespace: arcane-cms, repo: arcane-backend-go}
+  arcane-admin: {namespace: arcane-cms, repo: arcane-admin-frontend}
