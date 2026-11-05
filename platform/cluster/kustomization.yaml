@@ -7,4 +7,5 @@ resources:
   - network/ypm
   - network/yourplaymat
   - network/arcane
+  - network/arcane-cms
   - network/git-backup

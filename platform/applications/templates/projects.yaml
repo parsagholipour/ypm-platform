@@ -32,7 +32,7 @@ spec:
     - https://github.com/parsagholipour/{{ . }}.git
     {{- end }}{{ end }}
   destinations:
-    {{- range $ns := (list "ypm" "yourplaymat" "arcane" "git-backup") }}
+    {{- range $ns := (list "ypm" "yourplaymat" "arcane" "arcane-cms" "git-backup") }}
     - server: https://kubernetes.default.svc
       namespace: {{ $ns }}
     {{- end }}

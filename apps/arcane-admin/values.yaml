@@ -1,0 +1,17 @@
+image:
+  repository: 780564622080.dkr.ecr.us-east-1.amazonaws.com/ypm/arcane-admin
+
+components:
+  # The storefront CMS admin panel (github.com/parsagholipour/arcane-admin-frontend)
+  # at admin.arcane-fortress.com. Its /api/* is a server-side proxy to arcane-api
+  # that keeps the session in cookies.
+  arcane-admin:
+    replicas: 0                     # parked until the data copy
+    ports: [{name: http, port: 3000}]
+    network: {edge: true}
+    env:
+      ADMIN_ORIGIN: https://admin.arcane-fortress.com
+      API_PROXY_TARGET: http://arcane-api:8080
+    writable: [/tmp, /app/.next/cache]
+    probe: {http: {path: /login, port: 3000}, startupSeconds: 60}
+    resources: {cpu: 50m, memory: 128Mi, memoryLimit: 384Mi}

@@ -16,8 +16,8 @@ spec:
             description: "The blackbox probe through CloudFront has failed for 3 minutes. Check the app's pods (kubectl -n <namespace> get pods) and Caddy's logs (kubectl -n edge logs deploy/caddy)."
         - alert: YpmWorkloadUnavailable
           expr: |
-            kube_deployment_spec_replicas{namespace=~"edge|ypm|yourplaymat|arcane|git-backup"}
-              > kube_deployment_status_replicas_available{namespace=~"edge|ypm|yourplaymat|arcane|git-backup"}
+            kube_deployment_spec_replicas{namespace=~"edge|ypm|yourplaymat|arcane|arcane-cms|git-backup"}
+              > kube_deployment_status_replicas_available{namespace=~"edge|ypm|yourplaymat|arcane|arcane-cms|git-backup"}
           for: 3m
           labels:
             severity: critical

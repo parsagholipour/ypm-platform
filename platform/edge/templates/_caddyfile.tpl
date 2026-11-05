@@ -1,3 +1,13 @@
+{{- define "edge.proxy" -}}
+reverse_proxy {{ . }} {
+    header_up -X-Ypm-Origin
+    header_up X-Forwarded-Proto https
+    # The viewer's IP (Yourplaymat's geo lookup and the translation
+    # services' per-IP limit read it).
+    header_up X-Real-IP {client_ip}
+}
+{{- end }}
+
 {{- define "edge.caddyfile" -}}
 # Rendered from platform/edge (ypm-platform). Only CloudFront reaches this
 # listener (the node's security group). Each distribution adds X-Ypm-Origin,
@@ -30,16 +40,27 @@
         output stdout
         format json
     }
-{{ range $name, $upstream := .Values.routes }}
+{{ range $name, $route := .Values.routes }}
+{{- $upstream := $route }}
+{{- $paths := dict }}
+{{- if kindIs "map" $route }}
+{{- $upstream = required (printf "routes.%s.upstream is required" $name) $route.upstream }}
+{{- $paths = $route.paths | default dict }}
+{{- end }}
     @{{ $name }} header X-Ypm-Origin {{ $name }}
     handle @{{ $name }} {
-        reverse_proxy {{ $upstream }} {
-            header_up -X-Ypm-Origin
-            header_up X-Forwarded-Proto https
-            # The viewer's IP (Yourplaymat's geo lookup and the translation
-            # services' per-IP limit read it).
-            header_up X-Real-IP {client_ip}
+{{- if $paths }}
+{{- range $path, $pathUpstream := $paths }}
+        handle {{ $path }} {
+            {{- include "edge.proxy" $pathUpstream | nindent 12 }}
         }
+{{- end }}
+        handle {
+            {{- include "edge.proxy" $upstream | nindent 12 }}
+        }
+{{- else }}
+        {{- include "edge.proxy" $upstream | nindent 8 }}
+{{- end }}
     }
 {{ end }}
     handle {

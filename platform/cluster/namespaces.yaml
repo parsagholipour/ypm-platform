@@ -39,6 +39,17 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
 ---
+# The Arcane storefront CMS: its API, admin panel and media bucket.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: arcane-cms
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+---
 apiVersion: v1
 kind: Namespace
 metadata:

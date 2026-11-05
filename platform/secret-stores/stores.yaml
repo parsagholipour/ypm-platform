@@ -74,6 +74,30 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: ssm-reader
+  namespace: arcane-cms
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::780564622080:role/ypm-prod-k3s-secrets-arcane-cms
+automountServiceAccountToken: false
+---
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: ssm
+  namespace: arcane-cms
+spec:
+  provider:
+    aws:
+      service: ParameterStore
+      region: us-east-1
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: ssm-reader
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ssm-reader
   namespace: git-backup
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::780564622080:role/ypm-prod-k3s-secrets-git-backup

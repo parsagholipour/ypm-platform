@@ -1,0 +1,64 @@
+# The admin panel's server-side proxy calls the API.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: arcane-api
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: arcane-api}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: arcane-admin}
+      ports:
+        - {protocol: TCP, port: 8080}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: arcane-api-clients
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: arcane-admin}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: arcane-api}
+      ports:
+        - {protocol: TCP, port: 8080}
+---
+# MinIO: the API's uploads and deletes, and the one-off copy Job. Public reads
+# come through Caddy (network.edge).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: arcane-media
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: arcane-media}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - {key: app.kubernetes.io/name, operator: In, values: [arcane-api, media-copy]}
+      ports:
+        - {protocol: TCP, port: 9000}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: arcane-media-clients
+spec:
+  podSelector:
+    matchExpressions:
+      - {key: app.kubernetes.io/name, operator: In, values: [arcane-api, media-copy]}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: arcane-media}
+      ports:
+        - {protocol: TCP, port: 9000}

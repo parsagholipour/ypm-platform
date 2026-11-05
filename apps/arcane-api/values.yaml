@@ -1,0 +1,41 @@
+image:
+  repository: 780564622080.dkr.ecr.us-east-1.amazonaws.com/ypm/arcane-api
+
+components:
+  # The storefront CMS API (github.com/parsagholipour/arcane-backend-go) at
+  # api.arcane-fortress.com; Caddy sends /media/* to arcane-media instead. The
+  # storefront (Shopify Oxygen) reads it server-side through its CMS_API_URL; the
+  # admin panel calls it in-cluster.
+  arcane-api:
+    replicas: 0                     # parked until the data copy
+    user: 10001                     # the image's arcane user
+    group: 10001
+    ports: [{name: http, port: 8080}]
+    network: {edge: true, internet: true, rds: true}   # Shopify, SendGrid, Google, DeepSeek
+    env:
+      HTTP_ADDR: ":8080"
+      DB_HOST: ${RDS_HOST}
+      DB_PORT: ${RDS_PORT}
+      DB_USER: ypm_arcane_api
+      DB_NAME: ypm_arcane_api
+      # Read by pgx: the API's DSN names no sslmode, so these make it verified TLS.
+      PGSSLMODE: verify-full
+      PGSSLROOTCERT: /etc/ssl/rds/rds-ca.pem
+      MINIO_ENDPOINT: arcane-media:9000
+      MINIO_USE_SSL: "false"
+      # Media URLs are built from this when read (<url>/media/<key>); nothing stores it.
+      MINIO_PUBLIC_URL: https://api.arcane-fortress.com
+      GEOIP_DATABASE: /app/data/geoip
+      # Caddy's pods. Caddy sets X-Real-IP to the viewer, which the API reads first.
+      TRUSTED_PROXIES: 10.42.0.0/16
+      # As on Railway: the scheduled Shopify and stock jobs stay off.
+      DISABLE_CRON_JOBS: "true"
+    secretEnv:
+      paths: [env/arcane_api]
+      keys:
+        DB_PASSWORD: generated/db_arcane_api_password
+    # private/uploads holds the stock spreadsheet backups (not kept on Railway either).
+    writable: [/tmp, /app/private/uploads]
+    rdsCa: true
+    probe: {http: {path: /ping, port: 8080}, startupSeconds: 120}
+    resources: {cpu: 50m, memory: 192Mi, memoryLimit: 512Mi}
