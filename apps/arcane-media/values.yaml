@@ -1,0 +1,30 @@
+components:
+  # The storefront CMS's media bucket ("media"): the patched MinIO from
+  # arcane-backend-go (deploy/minio.Dockerfile), built by that repo's Deploy
+  # workflow (media job, tag deploy-<tree of deploy/>). Bump tag and digest here
+  # to upgrade it. Public reads reach it through Caddy at
+  # api.arcane-fortress.com/media/*; arcane-api writes over the cluster network.
+  arcane-media:
+    image:
+      repository: 780564622080.dkr.ecr.us-east-1.amazonaws.com/ypm/arcane-media
+      tag: deploy-e16b4cd416f2
+      digest: sha256:565439b11f1c723c478817705c7dd269b31a8aad9b62952e03cdb00ca31cb2f5
+    replicas: 1
+    user: 10001                     # the image's minio user
+    group: 10001
+    ports: [{name: s3, port: 9000}]
+    network: {edge: true}
+    env:
+      MINIO_BROWSER: "off"
+      HOME: /tmp
+    secretEnv:
+      paths: [env/arcane_media]
+    writable: [/tmp]
+    persistence: {size: 10Gi, mountPath: /data}
+    probe:
+      http: {path: /minio/health/ready, port: 9000}
+      liveness:
+        http: {path: /minio/health/live, port: 9000}
+      startupSeconds: 60
+    priorityClassName: ypm-critical
+    resources: {cpu: 50m, memory: 256Mi, memoryLimit: 1Gi}
