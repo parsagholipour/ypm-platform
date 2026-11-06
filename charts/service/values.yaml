@@ -45,6 +45,7 @@ parameterPrefix: /ypm/prod
 components: {}
 
 # cronJobs: <name> -> a CronJob running the release image. Keys: schedule, suspend,
-# command, env, secretKeys {VAR: {secret, key}}, labels, network,
-# resources {cpu, memory, memoryLimit}, timeoutSeconds (default 240).
+# command, env, secretKeys {VAR: {secret, key}}, secretEnv (as for components; its
+# ExternalSecret is <name>-env), labels, network, resources {cpu, memory, memoryLimit},
+# timeoutSeconds (default 240).
 cronJobs: {}

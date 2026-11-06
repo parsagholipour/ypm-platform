@@ -46,6 +46,11 @@ spec:
             - name: {{ $name }}
               image: {{ include "service.image" (dict "root" $ "component" $j) }}
               command: {{ toJson $j.command }}
+              {{- if $j.secretEnv }}
+              envFrom:
+                - secretRef:
+                    name: {{ $name }}-env
+              {{- end }}
               env:
                 {{- range $k, $v := ($j.env | default dict) }}
                 - name: {{ $k }}

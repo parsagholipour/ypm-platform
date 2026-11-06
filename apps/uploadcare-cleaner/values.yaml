@@ -1,0 +1,30 @@
+image:
+  repository: 780564622080.dkr.ecr.us-east-1.amazonaws.com/ypm/uploadcare-cleaner
+
+# Nightly Uploadcare cleanups (github.com/parsagholipour/uploadcare-cleaner): each
+# deletes the files its account received more than 4 months ago, at 02:30 UTC as on
+# Railway. One CronJob per Uploadcare account. A Job runs script.js once; index.js
+# (node-cron, a long-running process) is what Railway ran.
+cronJobs:
+  # yourplaymat.com customer uploads (Railway project "Uploadcare Cleaner").
+  uploadcare-cleaner-storefront:
+    schedule: "30 2 * * *"
+    suspend: true                   # until Railway's copy is stopped
+    command: &run [node, -e, "import('./script.js').then(m => m.runTask()).then(() => process.exit(0), e => { console.error(e); process.exit(1) })"]
+    network: {internet: true}       # api.uploadcare.com
+    secretEnv: {paths: [env/uploadcare_cleaner_storefront]}
+    timeoutSeconds: 3600
+    resources: {cpu: 50m, memory: 128Mi, memoryLimit: 256Mi}
+
+  # YPM Export's files (Railway project "Uploadcare Cleaner - YPM System"). It had
+  # not run on Railway for months, so its first run deletes the whole backlog
+  # (8,782 files uploaded 2026-01..07, counted 2026-11-07). Unsuspend only on the
+  # owner's word.
+  uploadcare-cleaner-ypm:
+    schedule: "30 2 * * *"
+    suspend: true
+    command: *run
+    network: {internet: true}
+    secretEnv: {paths: [env/uploadcare_cleaner_ypm]}
+    timeoutSeconds: 3600
+    resources: {cpu: 50m, memory: 128Mi, memoryLimit: 256Mi}
