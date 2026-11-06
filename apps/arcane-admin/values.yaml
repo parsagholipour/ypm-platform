@@ -13,4 +13,4 @@ components:
       API_PROXY_TARGET: http://arcane-api:8080
     writable: [/tmp, /app/.next/cache]
     probe: {http: {path: /login, port: 3000}, startupSeconds: 60}
-    resources: {cpu: 50m, memory: 128Mi, memoryLimit: 384Mi}
+    resources: {cpu: 15m, memory: 128Mi, memoryLimit: 384Mi}

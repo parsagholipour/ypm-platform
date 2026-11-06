@@ -27,7 +27,7 @@ components:
         DATABASE_PASSWORD: generated/db_yourplaymat_password
     rdsCa: true
     probe: {http: {path: /_health, port: 1337}, startupSeconds: 180}
-    resources: {cpu: 150m, memory: 256Mi, memoryLimit: 1Gi}
+    resources: {cpu: 50m, memory: 256Mi, memoryLimit: 1Gi}
 
   # Shopify sync and currency rates. 0 while Railway's Yourplaymat service is live:
   # it runs these crons until the storefront moves to api.yourplaymat.com.

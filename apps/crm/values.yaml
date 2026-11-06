@@ -21,7 +21,7 @@ components:
     rdsCa: true
     # 200 once the Keycloak provider is configured; no database access.
     probe: {http: {path: /api/auth/providers, port: 3007}, startupSeconds: 120}
-    resources: {cpu: 150m, memory: 384Mi, memoryLimit: 1Gi}
+    resources: {cpu: 25m, memory: 288Mi, memoryLimit: 1Gi}
 
 # The CRM's scheduled dispatch endpoints (POST with a bearer secret; 503 when
 # the secret is unset). Keep only those whose *_CRON_SECRET exists (2.3).

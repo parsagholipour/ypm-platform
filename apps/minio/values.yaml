@@ -38,4 +38,4 @@ components:
     writable: [/tmp]
     probe: {http: {path: /login, port: 9090}, startupSeconds: 30}
     terminationGracePeriodSeconds: 10
-    resources: {cpu: 25m, memory: 64Mi, memoryLimit: 256Mi}
+    resources: {cpu: 10m, memory: 32Mi, memoryLimit: 256Mi}

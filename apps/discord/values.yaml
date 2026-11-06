@@ -30,4 +30,4 @@ components:
         RABBITMQ_URL: "amqp://ypm:{{ .RABBITMQ_PASSWORD }}@rabbitmq:5672"
     rdsCa: true
     probe: {http: {path: /_health, port: 1337}, startupSeconds: 180}
-    resources: {cpu: 50m, memory: 320Mi, memoryLimit: 1Gi}
+    resources: {cpu: 20m, memory: 256Mi, memoryLimit: 1Gi}

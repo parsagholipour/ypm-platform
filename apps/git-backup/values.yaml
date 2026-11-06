@@ -11,7 +11,7 @@ components:
       paths: [env/git_backup]
     writable: [/tmp]
     persistence: {size: 10Gi, mountPath: /data}
-    resources: {cpu: 50m, memory: 64Mi, memoryLimit: 512Mi}
+    resources: {cpu: 10m, memory: 64Mi, memoryLimit: 512Mi}
 
   # The dashboard (login + TOTP, users in /data/web/users.json), same volume.
   git-backup-web:
@@ -28,4 +28,4 @@ components:
     persistence: {claim: git-backup-data, mountPath: /data}
     probe: {http: {path: /api/auth/status, port: 3000}, startupSeconds: 30}
     terminationGracePeriodSeconds: 10
-    resources: {cpu: 25m, memory: 96Mi, memoryLimit: 256Mi}
+    resources: {cpu: 10m, memory: 64Mi, memoryLimit: 256Mi}

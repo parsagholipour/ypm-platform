@@ -24,4 +24,4 @@ components:
     probe: {tcp: 5672, startupSeconds: 120}
     priorityClassName: ypm-critical
     terminationGracePeriodSeconds: 60
-    resources: {cpu: 100m, memory: 256Mi, memoryLimit: 768Mi}
+    resources: {cpu: 25m, memory: 160Mi, memoryLimit: 768Mi}

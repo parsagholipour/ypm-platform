@@ -34,7 +34,7 @@ components:
       - {parameter: files/backend/gcp-key.json, path: /run/secrets/gcp-key.json}
     rdsCa: true
     probe: {http: {path: /_health, port: 1337}, startupSeconds: 180}
-    resources: {cpu: 200m, memory: 384Mi, memoryLimit: 2Gi}
+    resources: {cpu: 100m, memory: 384Mi, memoryLimit: 2Gi}
 
   # The same image with crons on: one replica, replaced (never rolled), so a
   # cron never runs twice. 0 until the ypm cutover (9.7).

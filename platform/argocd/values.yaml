@@ -33,11 +33,11 @@ dex:
 
 controller:
   resources:
-    requests: {cpu: 100m, memory: 512Mi}
-    limits: {memory: 768Mi}
+    requests: {cpu: 100m, memory: 768Mi}
+    limits: {memory: 1Gi}
 repoServer:
   resources:
-    requests: {cpu: 50m, memory: 256Mi}
+    requests: {cpu: 50m, memory: 192Mi}
     limits: {memory: 512Mi}
 server:
   # Caddy may reach pods with this label (platform/cluster/network/edge).

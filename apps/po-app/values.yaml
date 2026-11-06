@@ -31,7 +31,7 @@ components:
     writable: [/tmp, /app/.next/cache]
     rdsCa: true
     probe: {http: {path: /api/health, port: 8080}, startupSeconds: 120}
-    resources: {cpu: 150m, memory: 768Mi, memoryLimit: 1536Mi}
+    resources: {cpu: 25m, memory: 512Mi, memoryLimit: 1536Mi}
 
   # The same image with all five schedulers on.
   po-app-worker:
@@ -48,4 +48,4 @@ components:
     writable: [/tmp, /app/.next/cache]
     rdsCa: true
     probe: {http: {path: /api/health, port: 8080}, startupSeconds: 120}
-    resources: {cpu: 50m, memory: 768Mi, memoryLimit: 1536Mi}
+    resources: {cpu: 30m, memory: 416Mi, memoryLimit: 1536Mi}

@@ -21,7 +21,7 @@ components:
     rdsCa: true
     probe: {http: {path: /missing-translations, port: 8080}, startupSeconds: 60}
     terminationGracePeriodSeconds: 10
-    resources: {cpu: 50m, memory: 96Mi, memoryLimit: 512Mi}
+    resources: {cpu: 10m, memory: 64Mi, memoryLimit: 512Mi}
 
   # translations-long.yourplaymat.com: built with -tags allowduplicates.
   translations-long:
@@ -38,4 +38,4 @@ components:
     rdsCa: true
     probe: {http: {path: /missing-translations, port: 8080}, startupSeconds: 60}
     terminationGracePeriodSeconds: 10
-    resources: {cpu: 50m, memory: 96Mi, memoryLimit: 512Mi}
+    resources: {cpu: 10m, memory: 64Mi, memoryLimit: 512Mi}
