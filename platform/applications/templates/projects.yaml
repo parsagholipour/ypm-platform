@@ -46,3 +46,9 @@ spec:
     - {group: "", kind: PersistentVolumeClaim}
     - {group: batch, kind: CronJob}
     - {group: external-secrets.io, kind: ExternalSecret}
+    # Created by the Deployments and CronJobs, never from Git. Argo CD hides
+    # resources a project doesn't list, so without these the UI shows no pods
+    # and no Logs tab.
+    - {group: apps, kind: ReplicaSet}
+    - {group: "", kind: Pod}
+    - {group: batch, kind: Job}
