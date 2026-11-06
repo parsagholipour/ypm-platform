@@ -28,6 +28,7 @@ apps:
   rabbitmq:     {namespace: ypm}
   backend:      {namespace: ypm, repo: ypm-export-backend}
   discord:      {namespace: ypm, repo: yp-discord-service}
+  uploadcare-cleaner: {namespace: ypm, repo: uploadcare-cleaner}   # nightly CronJobs
   yourplaymat:  {namespace: yourplaymat, repo: yourplaymat-backend}
   translations: {namespace: yourplaymat, repo: translation-service}
   git-backup:   {namespace: git-backup, repo: urludum-corp-git-backup}
