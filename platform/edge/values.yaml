@@ -17,6 +17,8 @@ routes:
   arcane_crm: crm.arcane.svc.cluster.local:3007
   minio: minio.arcane.svc.cluster.local:9000
   minio_console: minio-console.arcane.svc.cluster.local:9090
+  # Argo CD's UI, behind the CloudFront gate.
+  argocd: argocd-server.argocd.svc.cluster.local:80
   # The storefront CMS. Its media bucket is served under the API's domain: MinIO
   # reads /media/<key> as bucket "media" (path-style, public objects only).
   arcane_admin: arcane-admin.arcane-cms.svc.cluster.local:3000

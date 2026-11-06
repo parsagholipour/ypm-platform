@@ -1,5 +1,7 @@
 global:
-  domain: localhost:8080
+  # Its CloudFront distribution (infra: gated_k3s_sites), behind the secret-link
+  # gate (SSM /ypm/prod/generated/argocd_gate_url) and Argo CD's own login.
+  domain: d2kfejwc2mxakj.cloudfront.net
 
 configs:
   params:
@@ -9,7 +11,7 @@ configs:
     exec.enabled: false
     statusbadge.enabled: false
     users.anonymous.enabled: false
-    # Poll Git every minute (no inbound webhooks: nothing is exposed).
+    # Poll Git every minute (no inbound webhooks: the gate admits browsers only).
     timeout.reconciliation: 60s
     # Sync waves in the app of apps wait until each child Application is healthy.
     resource.customizations.health.argoproj.io_Application: |
@@ -38,6 +40,9 @@ repoServer:
     requests: {cpu: 50m, memory: 256Mi}
     limits: {memory: 512Mi}
 server:
+  # Caddy may reach pods with this label (platform/cluster/network/edge).
+  podLabels:
+    ypm.io/edge: "true"
   resources:
     requests: {cpu: 20m, memory: 64Mi}
     limits: {memory: 256Mi}
@@ -55,7 +60,7 @@ redis:
 # Apps are multi-source; source 2 is the release branch (platform/applications).
 notifications:
   enabled: true
-  argocdUrl: http://localhost:8080
+  argocdUrl: https://d2kfejwc2mxakj.cloudfront.net
   secret:
     create: false        # argocd-notifications-secret comes from External Secrets
   resources:
