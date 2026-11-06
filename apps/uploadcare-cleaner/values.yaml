@@ -9,7 +9,7 @@ cronJobs:
   # yourplaymat.com customer uploads (Railway project "Uploadcare Cleaner").
   uploadcare-cleaner-storefront:
     schedule: "30 2 * * *"
-    suspend: true                   # until Railway's copy is stopped
+    suspend: false                  # Railway's copy stopped 2026-11-07
     command: &run [node, -e, "import('./script.js').then(m => m.runTask()).then(() => process.exit(0), e => { console.error(e); process.exit(1) })"]
     network: {internet: true}       # api.uploadcare.com
     secretEnv: {paths: [env/uploadcare_cleaner_storefront]}
