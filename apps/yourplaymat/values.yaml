@@ -3,6 +3,7 @@ image:
 
 components:
   yourplaymat:
+    replicas: 0                     # parked for the final copy from Railway
     ports: [{name: http, port: 1337}]
     network: {edge: true, internet: true, rds: true}
     readOnlyRootFilesystem: false
